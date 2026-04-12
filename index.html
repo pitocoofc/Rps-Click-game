@@ -1,46 +1,124 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <title>Exemplo Proxy Open Source</title>
-    <style>
-        #conteudo-externo {
-            width: 100%;
-            height: 600px;
-            border: 1px solid #ccc;
-            overflow-y: scroll;
-            padding: 10px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Tradutor Open Source</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #111;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .box {
+      background: #1e1e1e;
+      padding: 20px;
+      border-radius: 10px;
+      width: 300px;
+      box-shadow: 0 0 20px #000;
+    }
+
+    textarea {
+      width: 100%;
+      height: 80px;
+      margin-bottom: 10px;
+      background: #2a2a2a;
+      color: #fff;
+      border: none;
+      padding: 10px;
+      border-radius: 5px;
+    }
+
+    select, button {
+      width: 100%;
+      margin-top: 5px;
+      padding: 10px;
+      border-radius: 5px;
+      border: none;
+    }
+
+    button {
+      background: #00ff88;
+      color: #000;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #resultado {
+      margin-top: 10px;
+      padding: 10px;
+      background: #2a2a2a;
+      border-radius: 5px;
+      min-height: 40px;
+    }
+  </style>
 </head>
 <body>
 
-    <h2>Notícias de RaaS (via Proxy)</h2>
-    <div id="status">Carregando conteúdo...</div>
-    
-    <!-- Onde o site vai aparecer -->
-    <div id="conteudo-externo"></div>
+<div class="box">
+  <h2>🌍 Tradutor</h2>
 
-    <script>
-        const urlAlvo = 'https://thehackernews.com';
-        const proxyUrl = `https://allorigins.win{encodeURIComponent(urlAlvo)}`;
+  <textarea id="texto" placeholder="Digite algo..."></textarea>
 
-        fetch(proxyUrl)
-            .then(response => {
-                if (response.ok) return response.json();
-                throw new Error('Erro na rede.');
-            })
-            .then(data => {
-                const container = document.getElementById('conteudo-externo');
-                const status = document.getElementById('status');
-                
-                // Injetamos o HTML recebido do proxy
-                container.innerHTML = data.contents;
-                status.innerText = "Conteúdo carregado!";
-            })
-            .catch(err => {
-                document.getElementById('status').innerText = "Erro ao carregar: " + err.message;
-            });
-    </script>
+  <select id="origem">
+    <option value="pt">Português</option>
+    <option value="en">Inglês</option>
+    <option value="es">Espanhol</option>
+  </select>
+
+  <select id="destino">
+    <option value="en">Inglês</option>
+    <option value="pt">Português</option>
+    <option value="es">Espanhol</option>
+  </select>
+
+  <button onclick="traduzir()">Traduzir</button>
+
+  <div id="resultado"></div>
+</div>
+
+<script>
+async function traduzir() {
+  const texto = document.getElementById("texto").value;
+  const origem = document.getElementById("origem").value;
+  const destino = document.getElementById("destino").value;
+  const resultado = document.getElementById("resultado");
+
+  resultado.innerText = "Traduzindo...";
+
+  try {
+    const res = await fetch("https://libretranslate.de/translate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        q: texto,
+        source: origem,
+        target: destino,
+        format: "text"
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.translatedText) {
+      resultado.innerText = data.translatedText;
+    } else {
+      resultado.innerText = "Erro na tradução.";
+    }
+
+  } catch (err) {
+    resultado.innerText = "Erro de conexão (possível CORS ou API offline).";
+    console.error(err);
+  }
+}
+</script>
+
 </body>
 </html>
