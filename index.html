@@ -1,123 +1,82 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <title>Tradutor Open Source</title>
-
-  <style>
-    body {
-      font-family: Arial;
-      background: #111;
-      color: #fff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-
-    .box {
-      background: #1e1e1e;
-      padding: 20px;
-      border-radius: 10px;
-      width: 300px;
-      box-shadow: 0 0 20px #000;
-    }
-
-    textarea {
-      width: 100%;
-      height: 80px;
-      margin-bottom: 10px;
-      background: #2a2a2a;
-      color: #fff;
-      border: none;
-      padding: 10px;
-      border-radius: 5px;
-    }
-
-    select, button {
-      width: 100%;
-      margin-top: 5px;
-      padding: 10px;
-      border-radius: 5px;
-      border: none;
-    }
-
-    button {
-      background: #00ff88;
-      color: #000;
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    #resultado {
-      margin-top: 10px;
-      padding: 10px;
-      background: #2a2a2a;
-      border-radius: 5px;
-      min-height: 40px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tradutor Web Ligeiro</title>
+    <style>
+        body { font-family: sans-serif; background: #1a1a1a; color: #fff; display: flex; justify-content: center; padding: 20px; }
+        .box { width: 100%; max-width: 450px; background: #2d2d2d; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        textarea { width: 100%; height: 80px; background: #3d3d3d; color: #fff; border: 1px solid #555; border-radius: 8px; padding: 10px; box-sizing: border-box; font-size: 16px; margin-top: 10px; resize: none; }
+        button { width: 100%; background: #4f46e5; color: white; border: none; padding: 15px; border-radius: 8px; font-weight: bold; margin-top: 15px; cursor: pointer; }
+        button:disabled { background: #444; color: #777; cursor: wait; }
+        #status { font-size: 12px; color: #ffa500; margin-top: 10px; text-align: center; }
+        #res { margin-top: 15px; padding: 12px; background: #1e1e1e; border-radius: 8px; min-height: 40px; color: #22c55e; border: 1px solid #333; }
+    </style>
 </head>
 <body>
 
 <div class="box">
-  <h2>🌍 Tradutor</h2>
-
-  <textarea id="texto" placeholder="Digite algo..."></textarea>
-
-  <select id="origem">
-    <option value="pt">Português</option>
-    <option value="en">Inglês</option>
-    <option value="es">Espanhol</option>
-  </select>
-
-  <select id="destino">
-    <option value="en">Inglês</option>
-    <option value="pt">Português</option>
-    <option value="es">Espanhol</option>
-  </select>
-
-  <button onclick="traduzir()">Traduzir</button>
-
-  <div id="resultado"></div>
+    <h3>Tradutor Offline (Fast)</h3>
+    <textarea id="txt" placeholder="Texto em Português..."></textarea>
+    <button id="btn">Carregando IA...</button>
+    <div id="status">Iniciando...</div>
+    <div id="res">Tradução aparecerá aqui.</div>
 </div>
 
-<script>
-async function traduzir() {
-  const texto = document.getElementById("texto").value;
-  const origem = document.getElementById("origem").value;
-  const destino = document.getElementById("destino").value;
-  const resultado = document.getElementById("resultado");
+<script type="module">
+    import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
 
-  resultado.innerText = "Traduzindo...";
+    // Configurações para evitar erro em mobile
+    env.allowLocalModels = false;
+    env.useBrowserCache = true;
 
-  try {
-    const res = await fetch("https://libretranslate.de/translate", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        q: texto,
-        source: origem,
-        target: destino,
-        format: "text"
-      })
-    });
+    const btn = document.getElementById('btn');
+    const status = document.getElementById('status');
+    const res = document.getElementById('res');
+    let tradutor;
 
-    const data = await res.json();
-
-    if (data.translatedText) {
-      resultado.innerText = data.translatedText;
-    } else {
-      resultado.innerText = "Erro na tradução.";
+    async function load() {
+        try {
+            // Modelo de ~45MB: Excelente para conexões mobile
+            tradutor = await pipeline('translation', 'Xenova/opus-mt-pt-en', {
+                progress_callback: (p) => {
+                    if(p.status === 'progress') {
+                        status.innerText = `Baixando: ${Math.round(p.progress)}% de 45MB`;
+                    }
+                    if(p.status === 'ready') status.innerText = "IA Pronta e Offline!";
+                }
+            });
+            btn.innerText = "Traduzir agora";
+            btn.disabled = false;
+        } catch (e) {
+            status.innerText = "Erro ao baixar. Verifique a internet.";
+            btn.innerText = "Tentar novamente";
+            btn.disabled = false;
+            console.error(e);
+        }
     }
 
-  } catch (err) {
-    resultado.innerText = "Erro de conexão (possível CORS ou API offline).";
-    console.error(err);
-  }
-}
+    btn.onclick = async () => {
+        const input = document.getElementById('txt').value;
+        if(!input || !tradutor) return load();
+
+        btn.disabled = true;
+        status.innerText = "Processando no seu celular...";
+        
+        try {
+            const out = await tradutor(input);
+            res.innerText = out[0].translation_text;
+            status.innerText = "Concluído!";
+        } catch (err) {
+            res.innerText = "Erro: " + err.message;
+        } finally {
+            btn.disabled = false;
+        }
+    };
+
+    btn.disabled = true;
+    load();
 </script>
 
 </body>
