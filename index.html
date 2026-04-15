@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Ghost Search (iframe)</title>
+<title>Ghost Search Auto Instance</title>
 
 <style>
 body {
@@ -32,13 +32,18 @@ button {
   border: none;
   cursor: pointer;
   background: #22c55e;
-  color: black;
 }
 
 iframe {
   width: 100%;
   height: calc(100vh - 60px);
   border: none;
+}
+
+.status {
+  padding: 5px;
+  font-size: 12px;
+  background: #111827;
 }
 </style>
 </head>
@@ -50,19 +55,45 @@ iframe {
   <button onclick="search()">Buscar</button>
 </div>
 
-<iframe id="frame" src=""></iframe>
+<div class="status" id="status">Aguardando...</div>
+
+<iframe id="frame"></iframe>
 
 <script>
-const INSTANCE = "https://search.sapti.me";
+const INSTANCES = [
+  "https://searx.tiekoetter.com",
+  "https://search.bus-hit.me",
+  "https://search.projectsegfau.lt"
+];
 
 function search() {
   let query = document.getElementById("searchInput").value;
-
   if (!query) return;
 
-  let url = `${INSTANCE}/search?q=${encodeURIComponent(query)}&categories=general`;
+  tryNext(0, query);
+}
 
-  document.getElementById("frame").src = url;
+function tryNext(index, query) {
+  if (index >= INSTANCES.length) {
+    document.getElementById("status").innerText =
+      "❌ Nenhuma instância funcionou";
+    return;
+  }
+
+  let instance = INSTANCES[index];
+  let url = `${instance}/search?q=${encodeURIComponent(query)}`;
+
+  document.getElementById("status").innerText =
+    "Testando: " + instance;
+
+  let iframe = document.getElementById("frame");
+  iframe.src = url;
+
+  // tenta detectar erro (simples)
+  setTimeout(() => {
+    // se bloqueou, tenta próxima
+    tryNext(index + 1, query);
+  }, 3000);
 }
 </script>
 
