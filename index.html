@@ -2,167 +2,68 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Ghost Search System</title>
+<title>Ghost Search (iframe)</title>
 
 <style>
 body {
+  margin: 0;
   font-family: Arial;
   background: #0f172a;
   color: white;
-  text-align: center;
 }
 
-input, button, select {
+.topbar {
+  display: flex;
   padding: 10px;
-  margin: 5px;
+  background: #020617;
+}
+
+input {
+  flex: 1;
+  padding: 10px;
   border-radius: 8px;
   border: none;
 }
 
 button {
-  cursor: pointer;
-}
-
-#instances {
-  margin-top: 15px;
-}
-
-.instance {
-  padding: 8px;
-  margin: 4px;
-  background: #1e293b;
-  border-radius: 6px;
-}
-
-.fast { color: #22c55e; }
-.medium { color: #eab308; }
-.slow { color: #ef4444; }
-
-.result {
-  text-align: left;
-  background: #1e293b;
+  margin-left: 10px;
   padding: 10px;
-  margin: 10px;
   border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  background: #22c55e;
+  color: black;
+}
+
+iframe {
+  width: 100%;
+  height: calc(100vh - 60px);
+  border: none;
 }
 </style>
 </head>
 
 <body>
 
-<h2>🔍 Ghost Search (SearXNG Multi Instance)</h2>
+<div class="topbar">
+  <input id="searchInput" placeholder="Digite sua busca...">
+  <button onclick="search()">Buscar</button>
+</div>
 
-<input id="query" placeholder="Digite sua busca">
-<button onclick="runSearch()">Buscar</button>
-
-<h3>🌐 Instâncias disponíveis</h3>
-<div id="instances">Testando...</div>
-
-<h3>📊 Resultados</h3>
-<div id="results"></div>
+<iframe id="frame" src=""></iframe>
 
 <script>
-const INSTANCES = [
-  "https://searx.be",
-  "https://priv.au",
-  "https://search.sapti.me",
-  "https://searx.tiekoetter.com"
-];
+const INSTANCE = "https://search.sapti.me";
 
-let rankedInstances = [];
+function search() {
+  let query = document.getElementById("searchInput").value;
 
-async function testInstances() {
-  let results = [];
+  if (!query) return;
 
-  for (let url of INSTANCES) {
-    let start = performance.now();
+  let url = `${INSTANCE}/search?q=${encodeURIComponent(query)}&categories=general`;
 
-    try {
-      let res = await fetch(`${url}/search?q=test&format=json`);
-      let time = performance.now() - start;
-
-      if (res.ok) {
-        results.push({ url, time });
-      }
-    } catch (e) {}
-  }
-
-  // ordenar por tempo
-  results.sort((a, b) => a.time - b.time);
-  rankedInstances = results;
-
-  renderInstances();
+  document.getElementById("frame").src = url;
 }
-
-function renderInstances() {
-  let container = document.getElementById("instances");
-  container.innerHTML = "";
-
-  rankedInstances.forEach((inst, index) => {
-    let speedClass =
-      inst.time < 500 ? "fast" :
-      inst.time < 1200 ? "medium" : "slow";
-
-    let div = document.createElement("div");
-    div.className = "instance " + speedClass;
-
-    div.innerHTML = `
-      ${index + 1}. ${inst.url} - ${Math.round(inst.time)}ms
-      <button onclick="selectInstance('${inst.url}')">Usar</button>
-    `;
-
-    container.appendChild(div);
-  });
-}
-
-function selectInstance(url) {
-  localStorage.setItem("selectedInstance", url);
-  alert("Instância selecionada: " + url);
-}
-
-async function runSearch() {
-  let query = document.getElementById("query").value;
-  let selected = localStorage.getItem("selectedInstance");
-
-  let list = selected
-    ? [selected, ...rankedInstances.map(i => i.url)]
-    : rankedInstances.map(i => i.url);
-
-  for (let base of list) {
-    try {
-      let res = await fetch(`${base}/search?q=${encodeURIComponent(query)}&format=json`);
-      if (res.ok) {
-        let data = await res.json();
-        showResults(data.results, base);
-        return;
-      }
-    } catch (e) {}
-  }
-
-  alert("Nenhuma instância respondeu");
-}
-
-function showResults(results, instance) {
-  let container = document.getElementById("results");
-  container.innerHTML = `<p>🔍 Usando: ${instance}</p>`;
-
-  results.slice(0, 5).forEach(r => {
-    let div = document.createElement("div");
-    div.className = "result";
-
-    div.innerHTML = `
-      <a href="${r.url}" target="_blank" style="color:#38bdf8">
-        ${r.title}
-      </a>
-      <p>${r.content}</p>
-    `;
-
-    container.appendChild(div);
-  });
-}
-
-// iniciar testes
-testInstances();
 </script>
 
 </body>
